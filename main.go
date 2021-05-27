@@ -3,65 +3,62 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/sirupsen/logrus"
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
+	"google.golang.org/grpc"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 )
 
-//
-//func main1() {
-//	exit := make(chan bool)
-//
-//	c, err := clientv3.New(clientv3.Config{
-//		Endpoints:   []string{"127.0.0.1:2379"},
-//		DialTimeout: 5 * time.Second,
-//		DialOptions: []grpc.DialOption{
-//			grpc.WithBlock(),
-//		},
-//	})
-//	if err != nil {
-//		logrus.WithError(err).Error("failed to connect to etcd")
-//		return
-//	}
-//
-//	go func() {
-//		ctx, cancel := context.WithCancel(context.Background())
-//		var killSignal = make(chan os.Signal)
-//		signal.Notify(killSignal, os.Interrupt, syscall.SIGTERM)
-//		for {
-//			fmt.Println("something is happening")
-//			//
-//			select {
-//			case watchRes := <-c.Watch(ctx, "/name", clientv3.WithPrefix()):
-//				for _, event := range watchRes.Events {
-//					logrus.Info(event.Type)
-//					logrus.Info(string(event.PrevKv.Key))
-//					logrus.Info(string(event.PrevKv.Value))
-//					logrus.Info(string(event.Kv.Key))
-//					logrus.Info(string(event.Kv.Value))
-//				}
-//			case <-killSignal:
-//				cancel()
-//				logrus.Info("I am dying now...")
-//				exit <- true
-//				return
-//				//default:
-//				//	fmt.Println("default :(")
-//			}
-//		}
-//
-//		//for wRes := range c.Watch(ctx, "/name", clientv3.WithPrefix()) {
-//		//	fmt.Println(len(wRes.Events))
-//		//}
-//
-//	}()
-//	<-exit
-//
-//}
+
+func main1() {
+	exit := make(chan bool)
+
+	c, err := v3.New(v3.Config{
+		Endpoints:   []string{"127.0.0.1:2379"},
+		DialTimeout: 5 * time.Second,
+		DialOptions: []grpc.DialOption{
+			grpc.WithBlock(),
+		},
+	})
+	if err != nil {
+		logrus.WithError(err).Error("failed to connect to etcd")
+		return
+	}
+
+	go func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		var killSignal = make(chan os.Signal)
+		signal.Notify(killSignal, os.Interrupt, syscall.SIGTERM)
+		for {
+			fmt.Println("something is happening")
+			//
+			select {
+			case watchRes := <-c.Watch(ctx, "/name", v3.WithPrefix()):
+				for _, event := range watchRes.Events {
+					logrus.Info(event.Type)
+					logrus.Info(string(event.PrevKv.Key))
+					logrus.Info(string(event.PrevKv.Value))
+					logrus.Info(string(event.Kv.Key))
+					logrus.Info(string(event.Kv.Value))
+				}
+			case <-killSignal:
+				cancel()
+				logrus.Info("I am dying now...")
+				exit <- true
+				return
+			}
+		}
+
+
+	}()
+	<-exit
+
+}
 
 func main() {
 	interrupt := make(chan os.Signal)
